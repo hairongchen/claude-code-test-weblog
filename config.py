@@ -8,3 +8,5 @@ class Config:
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(BASE_DIR, "instance", "blog.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     POSTS_PER_PAGE = 10
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads")

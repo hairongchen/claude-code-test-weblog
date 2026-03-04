@@ -479,6 +479,14 @@ header {
 }
 .post-body tr:hover td { background: rgba(124,58,237,.03); }
 
+.post-body img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-sm);
+  margin: 1rem auto;
+}
+
 /* ===== Comments ===== */
 .comments { margin-top: 2.5rem; }
 .comments > h2 {
@@ -1546,6 +1554,7 @@ body.focus-mode .post-body {
 }
 .editor-preview-pane table { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; font-size: 0.9rem; }
 .editor-preview-pane th,.editor-preview-pane td { border: 1px solid var(--border); padding: 0.55rem 0.9rem; }
+.editor-preview-pane img { max-width: 100%; height: auto; display: block; border-radius: var(--radius-sm); margin: 1rem auto; }
 .editor-preview-pane th { font-weight: 600; }
 .editor-preview-pane del { text-decoration: line-through; color: var(--text-muted); }
 
@@ -1554,4 +1563,46 @@ body.focus-mode .post-body {
   .editor-page.is-split .editor-body-wrap { grid-template-columns: 1fr; }
   .editor-page.is-split #body            { min-height: 300px; }
   .editor-preview-pane                   { min-height: 300px; }
+}
+
+/* === Image Upload Toolbar === */
+.upload-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.btn-img-upload {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 4px;
+  background: var(--surface, #f9f9f9);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-img-upload:hover:not(:disabled) {
+  background: var(--surface-hover, #eee);
+}
+
+.btn-img-upload:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.img-upload-status {
+  font-size: 0.82rem;
+  color: var(--muted, #888);
+}
+
+.img-upload-error {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  color: #b91c1c;
+  font-size: 0.85rem;
 }

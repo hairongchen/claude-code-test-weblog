@@ -33,3 +33,13 @@ _md = mistune.create_markdown(
 
 def render_markdown(text):
     return _md(text)
+
+
+def markdown_excerpt(text, length=240):
+    """Render Markdown to HTML, strip tags, return plain-text excerpt."""
+    html = _md(text)
+    plain = re.sub(r"<[^>]+>", " ", html)
+    plain = re.sub(r"\s+", " ", plain).strip()
+    if len(plain) <= length:
+        return plain
+    return plain[:length].rsplit(" ", 1)[0] + "…"

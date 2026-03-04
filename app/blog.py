@@ -1,3 +1,7 @@
+import os
+import uuid
+import io
+from datetime import datetime, timezone
 from flask import (
     Blueprint,
     render_template,
@@ -7,13 +11,18 @@ from flask import (
     flash,
     abort,
     current_app,
+    jsonify,
 )
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
 from .extensions import db
-from .models import Post, Comment, Tag
+from .models import Post, Comment, Tag, PostImage
 from .utils import unique_slug, slugify
 
 blog_bp = Blueprint("blog", __name__)
+
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
+ALLOWED_IMGHDR_TYPES = {"jpeg", "png", "gif", "webp"}
 
 
 def _sync_tags(tag_string):
@@ -33,6 +42,58 @@ def _sync_tags(tag_string):
             db.session.add(tag)
         result.append(tag)
     return result
+
+
+def _save_upload(file_storage):
+    if not file_storage or file_storage.filename == "":
+        raise ValueError("No file provided.")
+    safe_name = secure_filename(file_storage.filename)
+    if not safe_name:
+        raise ValueError("Invalid filename.")
+    ext = safe_name.rsplit(".", 1)[-1].lower() if "." in safe_name else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise ValueError("File type not allowed.")
+    file_bytes = file_storage.read()
+    # Detect image type via Pillow (imghdr was removed in Python 3.13)
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(file_bytes))
+        detected = img.format.lower() if img.format else None
+        # Pillow uses "JPEG" not "jpeg" — normalise and map to imghdr-style names
+        FORMAT_MAP = {"jpeg": "jpeg", "png": "png", "gif": "gif", "webp": "webp"}
+        detected = FORMAT_MAP.get(detected, detected)
+    except Exception:
+        detected = None
+    if detected is None or detected not in ALLOWED_IMGHDR_TYPES:
+        raise ValueError("File type not allowed.")
+    now = datetime.now(timezone.utc)
+    sub_dir = os.path.join(
+        current_app.config["UPLOAD_FOLDER"],
+        str(now.year),
+        f"{now.month:02d}",
+    )
+    os.makedirs(sub_dir, exist_ok=True)
+    disk_name = f"{uuid.uuid4().hex}.{ext}"
+    abs_path = os.path.join(sub_dir, disk_name)
+    with open(abs_path, "wb") as fh:
+        fh.write(file_bytes)
+    static_root = os.path.join(current_app.root_path, "static")
+    rel = os.path.relpath(abs_path, static_root).replace("\\", "/")
+    public_url = f"/static/{rel}"
+    record = PostImage(
+        filename=disk_name,
+        original_name=safe_name,
+        post_id=None,
+        size_bytes=len(file_bytes),
+    )
+    db.session.add(record)
+    db.session.commit()
+    return {
+        "url": public_url,
+        "filename": disk_name,
+        "original_name": safe_name,
+        "size_bytes": len(file_bytes),
+    }
 
 
 @blog_bp.route("/")
@@ -186,3 +247,18 @@ def delete_comment(slug, comment_id):
     db.session.commit()
     flash("🗑️ Comment deleted.", "success")
     return redirect(url_for("blog.post", slug=slug) + "#comments")
+
+
+@blog_bp.route("/upload-image", methods=["POST"])
+@login_required
+def upload_image():
+    try:
+        result = _save_upload(request.files.get("image"))
+        return jsonify(result), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
+@blog_bp.app_errorhandler(413)
+def handle_too_large(e):
+    return jsonify({"error": "File too large. Max 5 MB."}), 413

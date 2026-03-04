@@ -26,6 +26,15 @@
         <button type="button" class="emoji-tab" data-cat="tech">💻 Tech</button>
       </div>
       <div class="emoji-grid" id="emoji-grid"></div>
+      <!-- Image Upload -->
+      <div class="upload-toolbar-row">
+        <button type="button" id="img-upload-btn" class="btn-img-upload" title="Upload image and insert Markdown">
+          🖼 Insert Image
+        </button>
+        <input type="file" id="img-file-input" accept=".jpg,.jpeg,.png,.gif,.webp" style="display:none" aria-hidden="true">
+        <span id="img-upload-status" class="img-upload-status" aria-live="polite"></span>
+      </div>
+      <div id="img-upload-error" class="img-upload-error" role="alert" aria-live="assertive" style="display:none"></div>
     </div>
 
     <div class="form-group">
@@ -122,6 +131,7 @@ function insertAtCursor(el, text) {
   el.value = el.value.slice(0, s) + text + el.value.slice(e);
   el.selectionStart = el.selectionEnd = s + text.length;
   el.focus();
+  el.dispatchEvent(new Event('input'));
 }
 
 /* ===== Tag chip input ===== */
@@ -221,6 +231,77 @@ renderChips();
   bodyTA.addEventListener('input', debounce(() => { if (isSplit) renderPreview(); }, DEBOUNCE_MS));
 
   applySplit(isSplit);   // restore persisted state on load
+})();
+
+/* ===== Image Upload ===== */
+(function () {
+  const uploadBtn = document.getElementById('img-upload-btn');
+  const fileInput = document.getElementById('img-file-input');
+  const statusEl  = document.getElementById('img-upload-status');
+  const errorEl   = document.getElementById('img-upload-error');
+  const bodyTA    = document.getElementById('body');
+
+  if (!uploadBtn || !fileInput || !bodyTA) return;
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+
+  function clearError() {
+    errorEl.textContent = '';
+    errorEl.style.display = 'none';
+  }
+
+  function setLoading(active) {
+    uploadBtn.disabled = active;
+    statusEl.textContent = active ? 'Uploading…' : '';
+  }
+
+  /* Ask user for display width, return <img> HTML string */
+  function buildImgTag(url, name) {
+    const raw = prompt('图片显示宽度（例如：50% 或 400px，留空=100%）：', '100%');
+    const width = (raw === null || raw.trim() === '') ? '100%' : raw.trim();
+    return `<img src="${url}" alt="${name}" style="max-width:100%;width:${width};height:auto;">\n`;
+  }
+
+  uploadBtn.addEventListener('click', () => {
+    clearError();
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    clearError();
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const response = await fetch('/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        showError('Session expired. Please log in again.');
+        return;
+      }
+      const data = await response.json();
+      if (!response.ok) {
+        showError(data.error || 'Upload failed.');
+        return;
+      }
+      const imgTag = buildImgTag(data.url, data.original_name);
+      insertAtCursor(bodyTA, imgTag);
+    } catch (err) {
+      showError('Upload failed. Check your connection and try again.');
+      console.error('Image upload error:', err);
+    } finally {
+      setLoading(false);
+    }
+  });
 })();
 </script>
 {% endblock %}

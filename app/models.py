@@ -87,6 +87,22 @@ class Comment(db.Model):
         return f"<Comment {self.id}>"
 
 
+class PostImage(db.Model):
+    __tablename__ = "post_images"
+
+    id            = db.Column(db.Integer, primary_key=True)
+    filename      = db.Column(db.String(120), nullable=False, unique=True)
+    original_name = db.Column(db.String(255), nullable=False)
+    post_id       = db.Column(db.Integer, db.ForeignKey("posts.id"), nullable=True)
+    uploaded_at   = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    size_bytes    = db.Column(db.Integer, nullable=False)
+
+    post = db.relationship("Post", backref=db.backref("images", lazy=True))
+
+    def __repr__(self):
+        return f"<PostImage {self.filename}>"
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))

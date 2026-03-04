@@ -66,7 +66,7 @@
             {% endfor %}
           </div>
         {% endif %}
-        <p class="post-excerpt">{{ post.body[:240] }}{% if post.body|length > 240 %}…{% endif %}</p>
+        <p class="post-excerpt">{{ post.body | markdown_excerpt }}</p>
         <a href="{{ url_for('blog.post', slug=post.slug) }}" class="read-more">Read more →</a>
       </li>
     {% endfor %}

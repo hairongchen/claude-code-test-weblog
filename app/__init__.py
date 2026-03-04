@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 from .extensions import db, migrate, login_manager
-from .utils import render_markdown
+from .utils import render_markdown, markdown_excerpt
 from .quotes import get_daily_quote
 
 
@@ -18,6 +18,7 @@ def create_app():
 
     # Jinja2 filter for Markdown rendering
     app.jinja_env.filters["markdown"] = render_markdown
+    app.jinja_env.filters["markdown_excerpt"] = markdown_excerpt
 
     # Inject daily quote into every template context
     @app.context_processor
