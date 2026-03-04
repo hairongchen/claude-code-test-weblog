@@ -1,4 +1,6 @@
 instance/
+*.db
+.claude/settings.local.json
 __pycache__/
 *.pyc
 *.pyo
