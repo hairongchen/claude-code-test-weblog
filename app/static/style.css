@@ -1496,7 +1496,10 @@ body.focus-mode .post-body {
   border-bottom: 1px solid var(--border);
 }
 .editor-page.is-split #body {
+  height: 72vh;
   min-height: 520px;
+  max-height: 72vh;
+  overflow-y: scroll;
   resize: none;
 }
 
@@ -1507,12 +1510,14 @@ body.focus-mode .post-body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 1rem 1.25rem;
-  overflow-y: auto;
+  overflow-y: scroll;
   backdrop-filter: blur(8px);
   line-height: 1.8;
   font-size: 1.0125rem;
   color: #374151;
+  height: 72vh;
   min-height: 520px;
+  max-height: 72vh;
 }
 .editor-preview-pane.is-empty::before {
   content: "Nothing to preview yet — start typing…";

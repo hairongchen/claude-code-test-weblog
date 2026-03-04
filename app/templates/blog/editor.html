@@ -227,8 +227,49 @@ renderChips();
     try { localStorage.setItem(LS_KEY, String(active)); } catch (_) {}
   }
 
+  /* ===== Cursor-aware scroll sync: textarea → preview ===== */
+  // Track which line the cursor is on and scroll preview to the matching
+  // relative position, so the preview always shows the content being edited.
+
+  function getCursorRatio() {
+    const before     = bodyTA.value.substring(0, bodyTA.selectionStart);
+    const cursorLine = before.split('\n').length - 1;          // 0-based line index
+    const totalLines = Math.max(bodyTA.value.split('\n').length - 1, 1);
+    return cursorLine / totalLines;                             // 0..1
+  }
+
+  function applyRatioToPreview(ratio) {
+    if (!isSplit) return;
+    const pvScrollable = previewPane.scrollHeight - previewPane.clientHeight;
+    if (pvScrollable <= 0) return;
+    previewPane.scrollTop = ratio * pvScrollable;
+  }
+
+  // Cursor moved via keyboard or click → sync to cursor line
+  function syncToCursor() { applyRatioToPreview(getCursorRatio()); }
+
+  // textarea scrolled via mouse-wheel / scrollbar → use scroll ratio as fallback
+  function syncToScroll() {
+    const taScrollable = bodyTA.scrollHeight - bodyTA.clientHeight;
+    const ratio = taScrollable > 0 ? bodyTA.scrollTop / taScrollable : getCursorRatio();
+    applyRatioToPreview(ratio);
+  }
+
+  // selectionchange fires on every cursor move (arrows, click, Home/End, etc.)
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === bodyTA) syncToCursor();
+  }, { passive: true });
+
+  bodyTA.addEventListener('scroll', syncToScroll, { passive: true });
+
   toggleBtn.addEventListener('click', () => applySplit(!isSplit));
-  bodyTA.addEventListener('input', debounce(() => { if (isSplit) renderPreview(); }, DEBOUNCE_MS));
+  bodyTA.addEventListener('input', debounce(() => {
+    if (isSplit) {
+      renderPreview();
+      // After preview DOM is repainted, sync to current cursor position
+      requestAnimationFrame(syncToCursor);
+    }
+  }, DEBOUNCE_MS));
 
   applySplit(isSplit);   // restore persisted state on load
 })();
