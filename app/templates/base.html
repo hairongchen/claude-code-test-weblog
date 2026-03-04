@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Flask Blog{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div id="reading-progress-bar"></div>
+  <header>
+    <nav class="navbar">
+      <a href="{{ url_for('blog.index') }}" class="brand">✦ DevLog</a>
+      <ul class="nav-links">
+        <li><a href="{{ url_for('games.index') }}">🎮 Games</a></li>
+        {% if current_user.is_authenticated %}
+          <li><a href="{{ url_for('blog.new_post') }}">+ New Post</a></li>
+          <li><span class="nav-user">{{ current_user.username }}</span></li>
+          <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+        {% else %}
+          <li><a href="{{ url_for('auth.login') }}">Login</a></li>
+          <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary" style="padding:0.35rem 0.85rem;font-size:0.825rem;">Register</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">
+              {% if category == 'success' %}✓{% else %}✕{% endif %}
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <p>Built with Flask &middot; <a href="{{ url_for('blog.index') }}">DevLog</a></p>
+  </footer>
+</body>
+</html>

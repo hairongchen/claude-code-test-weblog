@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} – DevLog{% endblock %}
+
+{% block content %}
+
+{# ===== 浮动目录 ===== #}
+<nav class="toc-panel" id="toc-panel" aria-label="目录">
+  <div class="toc-header">
+    <span class="toc-title">📋 目录</span>
+    <button class="toc-close" id="toc-close" title="关闭目录">✕</button>
+  </div>
+  <ol class="toc-list" id="toc-list"></ol>
+</nav>
+
+{# ===== 右侧悬浮工具栏 ===== #}
+<div class="reading-toolbar" id="reading-toolbar">
+  <button class="rt-btn" id="btn-toc" title="目录 (T)">☰</button>
+  <button class="rt-btn" id="btn-focus" title="专注模式 (F)">◎</button>
+  <button class="rt-btn" id="btn-top" title="回到顶部">↑</button>
+  <div class="rt-progress-ring">
+    <svg width="36" height="36" viewBox="0 0 36 36">
+      <circle class="rt-ring-bg" cx="18" cy="18" r="14" fill="none" stroke-width="3"/>
+      <circle class="rt-ring-fill" id="rt-ring-fill" cx="18" cy="18" r="14" fill="none" stroke-width="3"
+              stroke-dasharray="87.96" stroke-dashoffset="87.96" stroke-linecap="round"/>
+    </svg>
+    <span class="rt-ring-pct" id="rt-ring-pct">0%</span>
+  </div>
+</div>
+
+{# ===== 分享卡片遮罩 ===== #}
+<div class="share-overlay" id="share-overlay" hidden>
+  <div class="share-card" id="share-card">
+    <div class="share-card-badge">✨ 阅读完成</div>
+    <h2 class="share-card-title">{{ post.title }}</h2>
+    <p class="share-card-meta">✍️ {{ post.author.username }} &nbsp;·&nbsp; 📅 {{ post.created_at.strftime('%b %d, %Y') }}</p>
+    <div class="share-card-divider"></div>
+    <p class="share-card-hint">长按 / 右键保存图片分享</p>
+    <div class="share-card-actions">
+      <button class="btn btn-primary" id="share-copy-link">🔗 复制链接</button>
+      <button class="btn btn-secondary" id="share-close">关闭</button>
+    </div>
+    <div class="share-card-orb share-card-orb-1"></div>
+    <div class="share-card-orb share-card-orb-2"></div>
+  </div>
+</div>
+
+<article class="post-full" id="post-full">
+  <header class="post-header">
+    <h1>{{ post.title }}</h1>
+    <div class="post-meta">
+      <span>✍️ {{ post.author.username }}</span>
+      <span class="sep">·</span>
+      <span>📅 {{ post.created_at.strftime('%b %d, %Y') }}</span>
+      {% if post.updated_at and post.updated_at != post.created_at %}
+        <span class="sep">·</span>
+        <span>🔄 {{ post.updated_at.strftime('%b %d, %Y') }}</span>
+      {% endif %}
+      <span class="sep">·</span>
+      <span id="reading-time-badge" class="reading-time-badge">⏱️ 计算中…</span>
+    </div>
+    {% if post.tags %}
+      <div class="tag-list" style="margin-top:0.75rem;">
+        {% for t in post.tags %}
+          <a href="{{ url_for('blog.tag', slug=t.slug) }}" class="tag">#{{ t.name }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if current_user.is_authenticated and current_user.id == post.user_id %}
+      <div class="post-actions">
+        <a href="{{ url_for('blog.edit_post', slug=post.slug) }}" class="btn btn-secondary">✏️ Edit</a>
+        <form method="post" action="{{ url_for('blog.delete_post', slug=post.slug) }}"
+              onsubmit="return confirm('🗑️ Delete this post? This cannot be undone.');"
+              style="display:inline">
+          <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+        </form>
+      </div>
+    {% endif %}
+  </header>
+
+  <div class="post-body">
+    {{ post.body | markdown | safe }}
+  </div>
+</article>
+
+<section class="comments" id="comments">
+  <h2>💬 {{ post.comments|length }} Comment{{ 's' if post.comments|length != 1 }}</h2>
+
+  {% for comment in post.comments %}
+    <div class="comment">
+      <div class="comment-meta">
+        <strong>{{ comment.author.username }}</strong>
+        <span class="sep">·</span>
+        <span>{{ comment.created_at.strftime('%b %d, %Y · %H:%M') }}</span>
+        {% if current_user.is_authenticated and current_user.id == comment.user_id %}
+          <span class="sep">·</span>
+          <form method="post"
+                action="{{ url_for('blog.delete_comment', slug=post.slug, comment_id=comment.id) }}"
+                style="display:inline"
+                onsubmit="return confirm('Delete this comment?');">
+            <button type="submit" class="btn-link btn-danger-link">🗑️ Delete</button>
+          </form>
+        {% endif %}
+      </div>
+      <p class="comment-body">{{ comment.body }}</p>
+    </div>
+  {% else %}
+    <p style="color:var(--text-muted);font-size:0.875rem;padding:0.5rem 0;">
+      🌵 No comments yet — be the first!
+    </p>
+  {% endfor %}
+
+  {% if current_user.is_authenticated %}
+    <div class="comment-form">
+      <h3>💬 Leave a comment</h3>
+      <form method="post" action="{{ url_for('blog.add_comment', slug=post.slug) }}">
+        <div class="form-group">
+          <textarea name="body" id="comment-body" rows="4"
+                    placeholder="Share your thoughts… (emoji welcome 😊)" required></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+          <button type="submit" class="btn btn-primary">Post Comment 🚀</button>
+          <div class="emoji-bar" id="comment-emoji-bar"></div>
+        </div>
+      </form>
+    </div>
+  {% else %}
+    <p style="margin-top:1.25rem;font-size:0.9rem;color:var(--text-muted);">
+      👋 <a href="{{ url_for('auth.login') }}">Sign in</a> to leave a comment.
+    </p>
+  {% endif %}
+</section>
+
+<script>
+/* ===== 快捷 Emoji 栏 ===== */
+(function () {
+  const QUICK = ['😀','😂','🥰','🔥','👍','🎉','💯','🤔','😭','✨','💡','🚀','❤️','😎','🥳'];
+  const bar = document.getElementById('comment-emoji-bar');
+  const ta  = document.getElementById('comment-body');
+  if (!bar || !ta) return;
+  QUICK.forEach(em => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'emoji-quick-btn';
+    b.textContent = em;
+    b.onclick = () => insertAtCursor(ta, em);
+    bar.appendChild(b);
+  });
+  function insertAtCursor(el, text) {
+    const s = el.selectionStart, e = el.selectionEnd;
+    el.value = el.value.slice(0, s) + text + el.value.slice(e);
+    el.selectionStart = el.selectionEnd = s + text.length;
+    el.focus();
+  }
+})();
+
+/* ===== 沉浸式阅读功能 ===== */
+(function () {
+  /* --- 元素引用 --- */
+  const progressBar  = document.getElementById('reading-progress-bar');
+  const postBody     = document.querySelector('.post-body');
+  const tocPanel     = document.getElementById('toc-panel');
+  const tocList      = document.getElementById('toc-list');
+  const tocClose     = document.getElementById('toc-close');
+  const btnToc       = document.getElementById('btn-toc');
+  const btnFocus     = document.getElementById('btn-focus');
+  const btnTop       = document.getElementById('btn-top');
+  const ringFill     = document.getElementById('rt-ring-fill');
+  const ringPct      = document.getElementById('rt-ring-pct');
+  const readingBadge = document.getElementById('reading-time-badge');
+  const shareOverlay = document.getElementById('share-overlay');
+  const shareCopyBtn = document.getElementById('share-copy-link');
+  const shareClose   = document.getElementById('share-close');
+  const toolbar      = document.getElementById('reading-toolbar');
+
+  /* --- 阅读时间估算 --- */
+  if (postBody && readingBadge) {
+    const words = postBody.innerText.trim().split(/\s+/).length;
+    const mins  = Math.max(1, Math.round(words / 200));
+    readingBadge.textContent = `⏱️ 约 ${mins} 分钟`;
+  }
+
+  /* --- 构建目录 --- */
+  const headings = postBody ? postBody.querySelectorAll('h1, h2, h3') : [];
+  headings.forEach((h, i) => {
+    if (!h.id) h.id = 'heading-' + i;
+    const li = document.createElement('li');
+    li.className = 'toc-item toc-' + h.tagName.toLowerCase();
+    const a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    a.dataset.target = h.id;
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.getElementById(h.id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+
+  /* 没有标题时隐藏目录按钮 */
+  if (headings.length === 0 && btnToc) btnToc.style.display = 'none';
+
+  /* --- 滚动核心逻辑 --- */
+  let shareShown = false;
+  function onScroll() {
+    const scrollTop  = window.scrollY;
+    const docHeight  = document.documentElement.scrollHeight - window.innerHeight;
+    const pct        = docHeight > 0 ? scrollTop / docHeight : 0;
+    const pctInt     = Math.round(pct * 100);
+
+    /* 顶部进度条 */
+    if (progressBar) progressBar.style.width = pctInt + '%';
+
+    /* 圆形进度环 */
+    const circumference = 87.96;
+    if (ringFill) ringFill.style.strokeDashoffset = circumference * (1 - pct);
+    if (ringPct)  ringPct.textContent = pctInt + '%';
+
+    /* 工具栏显隐 */
+    if (toolbar) toolbar.classList.toggle('rt-visible', scrollTop > 200);
+
+    /* 目录高亮当前章节 */
+    if (headings.length > 0) {
+      let active = headings[0].id;
+      headings.forEach(h => {
+        if (h.getBoundingClientRect().top <= 100) active = h.id;
+      });
+      tocList.querySelectorAll('a').forEach(a => {
+        a.classList.toggle('toc-active', a.dataset.target === active);
+      });
+    }
+
+    /* 阅读完成 → 分享卡片（仅弹一次，滚动到底部 95%） */
+    if (!shareShown && pct >= 0.95) {
+      shareShown = true;
+      setTimeout(() => { shareOverlay.hidden = false; shareOverlay.classList.add('share-in'); }, 600);
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* --- 目录面板开关 --- */
+  if (btnToc) btnToc.addEventListener('click', () => tocPanel.classList.toggle('toc-open'));
+  if (tocClose) tocClose.addEventListener('click', () => tocPanel.classList.remove('toc-open'));
+
+  /* --- 专注模式 --- */
+  let focusMode = false;
+  function toggleFocus() {
+    focusMode = !focusMode;
+    document.body.classList.toggle('focus-mode', focusMode);
+    if (btnFocus) {
+      btnFocus.title    = focusMode ? '退出专注模式 (F)' : '专注模式 (F)';
+      btnFocus.textContent = focusMode ? '✕' : '◎';
+    }
+  }
+  if (btnFocus) btnFocus.addEventListener('click', toggleFocus);
+
+  /* --- 回到顶部 --- */
+  if (btnTop) btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+  /* --- 键盘快捷键 --- */
+  document.addEventListener('keydown', e => {
+    if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+    if (e.key === 'f' || e.key === 'F') toggleFocus();
+    if (e.key === 't' || e.key === 'T') tocPanel.classList.toggle('toc-open');
+    if (e.key === 'Escape') {
+      if (focusMode) toggleFocus();
+      tocPanel.classList.remove('toc-open');
+      shareOverlay.hidden = true;
+    }
+  });
+
+  /* --- 分享卡片 --- */
+  if (shareCopyBtn) {
+    shareCopyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(location.href).then(() => {
+        shareCopyBtn.textContent = '✓ 已复制！';
+        setTimeout(() => { shareCopyBtn.textContent = '🔗 复制链接'; }, 2000);
+      });
+    });
+  }
+  if (shareClose) shareClose.addEventListener('click', () => { shareOverlay.hidden = true; });
+  if (shareOverlay) shareOverlay.addEventListener('click', e => {
+    if (e.target === shareOverlay) shareOverlay.hidden = true;
+  });
+})();
+</script>
+{% endblock %}

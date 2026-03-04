@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{% if active_tag %}#{{ active_tag.name }}{% else %}Posts{% endif %} – DevLog{% endblock %}
+
+{% block content %}
+
+{# ===== Daily Quote Banner ===== #}
+{% if not active_tag %}
+<div class="quote-banner" id="quote-banner">
+  <div class="quote-bg-orb quote-bg-orb-1"></div>
+  <div class="quote-bg-orb quote-bg-orb-2"></div>
+  <div class="quote-badge">✨ Quote of the Day</div>
+  <blockquote class="quote-text" id="quote-text">
+    <span class="quote-mark open">"</span>{{ daily_quote.text }}<span class="quote-mark close">"</span>
+  </blockquote>
+  <cite class="quote-author">— {{ daily_quote.author }}</cite>
+  <button class="quote-copy" id="quote-copy" title="Copy quote" onclick="copyQuote()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </svg>
+    <span id="copy-label">Copy</span>
+  </button>
+</div>
+{% endif %}
+
+<div class="page-header">
+  {% if active_tag %}
+    <h1>🏷️ #{{ active_tag.name }}</h1>
+  {% else %}
+    <h1>✨ Latest Posts</h1>
+  {% endif %}
+  {% if current_user.is_authenticated %}
+    <a href="{{ url_for('blog.new_post') }}" class="btn btn-primary">✏️ New Post</a>
+  {% endif %}
+</div>
+
+{% if popular_tags %}
+  <div class="tag-cloud">
+    {% for t in popular_tags %}
+      <a href="{{ url_for('blog.tag', slug=t.slug) }}"
+         class="tag {% if active_tag and active_tag.id == t.id %}tag-active{% endif %}">
+        #{{ t.name }}
+      </a>
+    {% endfor %}
+    {% if active_tag %}
+      <a href="{{ url_for('blog.index') }}" class="tag tag-clear">✕ Clear</a>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if pagination.items %}
+  <ul class="post-list">
+    {% for post in pagination.items %}
+      <li class="post-card">
+        <h2><a href="{{ url_for('blog.post', slug=post.slug) }}">{{ post.title }}</a></h2>
+        <div class="post-meta">
+          <span>✍️ {{ post.author.username }}</span>
+          <span class="sep">·</span>
+          <span>📅 {{ post.created_at.strftime('%b %d, %Y') }}</span>
+          <span class="sep">·</span>
+          <span>💬 {{ post.comments|length }}</span>
+        </div>
+        {% if post.tags %}
+          <div class="tag-list">
+            {% for t in post.tags %}
+              <a href="{{ url_for('blog.tag', slug=t.slug) }}" class="tag">#{{ t.name }}</a>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <p class="post-excerpt">{{ post.body[:240] }}{% if post.body|length > 240 %}…{% endif %}</p>
+        <a href="{{ url_for('blog.post', slug=post.slug) }}" class="read-more">Read more →</a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <nav class="pagination" aria-label="Page navigation">
+    {% if pagination.has_prev %}
+      <a href="{{ url_for(request.endpoint, page=pagination.prev_num, **({'slug': active_tag.slug} if active_tag else {})) }}"
+         class="btn btn-secondary">← Newer</a>
+    {% endif %}
+    <span class="page-info">{{ pagination.page }} / {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+      <a href="{{ url_for(request.endpoint, page=pagination.next_num, **({'slug': active_tag.slug} if active_tag else {})) }}"
+         class="btn btn-secondary">Older →</a>
+    {% endif %}
+  </nav>
+
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🌱</div>
+    <p>
+      {% if active_tag %}No posts tagged <strong>#{{ active_tag.name }}</strong> yet.{% else %}No posts yet.{% endif %}<br>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('blog.new_post') }}">Write the first one →</a>
+      {% else %}
+        <a href="{{ url_for('auth.register') }}">Register</a> to get started.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+
+<script>
+function copyQuote() {
+  const text = `"{{ daily_quote.text }}" — {{ daily_quote.author }}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn   = document.getElementById('quote-copy');
+    const label = document.getElementById('copy-label');
+    if (!btn) return;
+    btn.classList.add('copied');
+    label.textContent = '✓ Copied!';
+    setTimeout(() => { btn.classList.remove('copied'); label.textContent = 'Copy'; }, 2000);
+  });
+}
+</script>
+{% endblock %}

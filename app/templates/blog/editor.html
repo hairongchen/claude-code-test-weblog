@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}{% if post %}Edit Post{% else %}New Post{% endif %} – DevLog{% endblock %}
+
+{% block content %}
+<div class="editor-page">
+  <h1>{% if post %}✏️ Edit Post{% else %}✨ New Post{% endif %}</h1>
+
+  <form method="post" novalidate>
+    <div class="form-group">
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title"
+             value="{{ title|default('') }}"
+             placeholder="Give your post a great title…"
+             required autofocus>
+    </div>
+
+    <!-- Emoji Toolbar -->
+    <div class="editor-toolbar">
+      <span class="toolbar-label">😊 Insert emoji:</span>
+      <div class="emoji-tabs">
+        <button type="button" class="emoji-tab active" data-cat="smileys">😀 Faces</button>
+        <button type="button" class="emoji-tab" data-cat="gestures">👋 Gestures</button>
+        <button type="button" class="emoji-tab" data-cat="nature">🌸 Nature</button>
+        <button type="button" class="emoji-tab" data-cat="food">🍕 Food</button>
+        <button type="button" class="emoji-tab" data-cat="symbols">❤️ Symbols</button>
+        <button type="button" class="emoji-tab" data-cat="tech">💻 Tech</button>
+      </div>
+      <div class="emoji-grid" id="emoji-grid"></div>
+    </div>
+
+    <div class="form-group">
+      <div class="preview-toolbar">
+        <label for="body">Content <span class="hint">— Markdown supported</span></label>
+        <button type="button" id="preview-toggle" class="btn-preview-toggle"
+                aria-pressed="false" aria-label="Toggle split preview">◫ Preview</button>
+      </div>
+
+      <div class="editor-body-wrap" id="editor-body-wrap">
+        <!-- Left: the real textarea (always in DOM, always submitted) -->
+        <div class="editor-split-left">
+          <span class="split-pane-label">✏️ Markdown</span>
+          <textarea id="body" name="body" rows="22"
+                    placeholder="# Start writing…&#10;&#10;Markdown supported — **bold**, *italic*, `code`"
+                    required>{{ body|default('') }}</textarea>
+        </div>
+        <!-- Right: preview pane (hidden in edit-only mode) -->
+        <div class="editor-split-right" id="editor-split-right">
+          <span class="split-pane-label">👁 Preview</span>
+          <div id="preview-pane" class="editor-preview-pane is-empty"
+               role="region" aria-label="Markdown preview"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tag input -->
+    <div class="form-group">
+      <label for="tag-input">🏷️ Tags <span class="hint">— press Enter or comma to add</span></label>
+      <div class="tag-input-wrap" id="tag-input-wrap">
+        <div class="tag-chips" id="tag-chips"></div>
+        <input type="text" id="tag-input" placeholder="e.g. python, tutorial…" autocomplete="off">
+      </div>
+      <input type="hidden" name="tags" id="tags-hidden" value="{{ tags|default('') }}">
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        {% if post %}💾 Save Changes{% else %}🚀 Publish{% endif %}
+      </button>
+      <a href="{{ url_for('blog.post', slug=post.slug) if post else url_for('blog.index') }}"
+         class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script>
+/* ===== Emoji Picker ===== */
+const EMOJIS = {
+  smileys:  ['😀','😃','😄','😁','😅','😂','🤣','🥰','😍','🤩','😎','🥳','🤔','😏','😒',
+             '😭','😤','🤯','😱','🥺','😢','😡','😇','🤠','😴','🤤','🤮','😈','👻','💀'],
+  gestures: ['👍','👎','👌','✌️','🤞','🤟','🤘','👏','🙌','🤝','🙏','💪','✊','👊','🤜',
+             '🤛','🖐️','👋','🤙','💅','🫶','🫰','🤌','💁','🤦','🤷','🙋','🧏','🫡','🫠'],
+  nature:   ['🌸','🌺','🌹','🌷','🌻','🌼','🍀','🌿','🌱','🍃','🌳','🌲','🌴','🐶','🐱',
+             '🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐸','🐵','🦋','🐝','🌈','⭐'],
+  food:     ['🍕','🍔','🌮','🌯','🍜','🍣','🍱','🍩','🍪','🎂','🍰','🧁','🍫','🍬','🍭',
+             '🍦','🍧','☕','🧋','🍵','🥤','🍺','🥂','🍷','🧃','🍓','🍇','🍉','🥑','🌽'],
+  symbols:  ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💕','💞','💓','💗','💖','💘','❣️',
+             '💝','🔥','✨','⭐','🌟','💫','🎉','🎊','🎈','🏆','🥇','💯','✅','❌','⚡'],
+  tech:     ['💻','📱','🖥️','⌨️','🖱️','🖨️','📡','🔋','💾','💿','📷','🎮','🕹️','🤖','👾',
+             '🧠','🔬','🔭','⚗️','🧬','💡','🔧','🔨','⚙️','🛠️','🚀','🛸','🌐','📊','📈'],
+};
+
+const grid     = document.getElementById('emoji-grid');
+const textarea = document.getElementById('body');
+const tabs     = document.querySelectorAll('.emoji-tab');
+
+function renderCat(cat) {
+  grid.innerHTML = '';
+  EMOJIS[cat].forEach(em => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'emoji-btn';
+    btn.textContent = em;
+    btn.title = em;
+    btn.onclick = () => insertAtCursor(textarea, em);
+    grid.appendChild(btn);
+  });
+}
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderCat(tab.dataset.cat);
+  });
+});
+
+renderCat('smileys');
+
+function insertAtCursor(el, text) {
+  const s = el.selectionStart, e = el.selectionEnd;
+  el.value = el.value.slice(0, s) + text + el.value.slice(e);
+  el.selectionStart = el.selectionEnd = s + text.length;
+  el.focus();
+}
+
+/* ===== Tag chip input ===== */
+const tagInput  = document.getElementById('tag-input');
+const chipsEl   = document.getElementById('tag-chips');
+const hiddenEl  = document.getElementById('tags-hidden');
+const wrap      = document.getElementById('tag-input-wrap');
+
+let tags = hiddenEl.value
+  ? hiddenEl.value.split(',').map(t => t.trim()).filter(Boolean)
+  : [];
+
+function renderChips() {
+  chipsEl.innerHTML = '';
+  tags.forEach((t, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `#${t} <button type="button" aria-label="Remove">&times;</button>`;
+    chip.querySelector('button').onclick = () => { tags.splice(i, 1); renderChips(); };
+    chipsEl.appendChild(chip);
+  });
+  hiddenEl.value = tags.join(', ');
+}
+
+function addTag(raw) {
+  const val = raw.trim().toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff\-]/g, '').slice(0, 30);
+  if (val && !tags.includes(val) && tags.length < 8) {
+    tags.push(val);
+    renderChips();
+  }
+}
+
+tagInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    addTag(tagInput.value);
+    tagInput.value = '';
+  } else if (e.key === 'Backspace' && tagInput.value === '' && tags.length) {
+    tags.pop();
+    renderChips();
+  }
+});
+
+tagInput.addEventListener('blur', () => {
+  if (tagInput.value.trim()) { addTag(tagInput.value); tagInput.value = ''; }
+});
+
+wrap.addEventListener('click', () => tagInput.focus());
+
+renderChips();
+
+/* ===== Markdown Split Preview ===== */
+(function () {
+  const LS_KEY       = 'editor_preview_mode';
+  const DEBOUNCE_MS  = 300;
+
+  const editorPage   = document.querySelector('.editor-page');
+  const toggleBtn    = document.getElementById('preview-toggle');
+  const bodyTA       = document.getElementById('body');
+  const previewPane  = document.getElementById('preview-pane');
+
+  if (!editorPage || !toggleBtn || !bodyTA || !previewPane) return;
+
+  if (typeof marked === 'undefined') { toggleBtn.style.display = 'none'; return; }
+
+  marked.setOptions({ gfm: true, breaks: false, mangle: false, headerIds: false });
+
+  const stored = localStorage.getItem(LS_KEY);
+  let isSplit = stored === null ? true : stored === 'true';
+
+  function debounce(fn, ms) {
+    let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  }
+
+  function renderPreview() {
+    const md = bodyTA.value;
+    if (!md.trim()) {
+      previewPane.innerHTML = '';
+      previewPane.classList.add('is-empty');
+    } else {
+      previewPane.innerHTML = marked.parse(md);
+      previewPane.classList.remove('is-empty');
+    }
+  }
+
+  function applySplit(active) {
+    isSplit = active;
+    editorPage.classList.toggle('is-split', active);
+    toggleBtn.classList.toggle('is-active', active);
+    toggleBtn.setAttribute('aria-pressed', String(active));
+    toggleBtn.textContent = active ? '◧ Edit Only' : '◫ Preview';
+    if (active) renderPreview();
+    try { localStorage.setItem(LS_KEY, String(active)); } catch (_) {}
+  }
+
+  toggleBtn.addEventListener('click', () => applySplit(!isSplit));
+  bodyTA.addEventListener('input', debounce(() => { if (isSplit) renderPreview(); }, DEBOUNCE_MS));
+
+  applySplit(isSplit);   // restore persisted state on load
+})();
+</script>
+{% endblock %}

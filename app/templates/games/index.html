@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}🎮 Games – DevLog{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🎮 Mini Games</h1>
+</div>
+
+<div class="games-grid">
+  <a href="{{ url_for('games.snake') }}" class="game-card">
+    <div class="game-icon">🐍</div>
+    <h2>Snake</h2>
+    <p>Classic snake — eat 🍎, grow longer, don't crash. Arrow keys or WASD to move.</p>
+    <span class="btn btn-primary">Play Now →</span>
+  </a>
+
+  <a href="{{ url_for('games.game_2048') }}" class="game-card">
+    <div class="game-icon">🔢</div>
+    <h2>2048</h2>
+    <p>Slide tiles to merge numbers. Reach the <strong>2048</strong> tile to win!</p>
+    <span class="btn btn-primary">Play Now →</span>
+  </a>
+</div>
+
+<style>
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+}
+.game-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--text);
+  backdrop-filter: blur(12px);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+  box-shadow: var(--shadow-card);
+}
+.game-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 48px rgba(139,92,246,.2);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+.game-icon { font-size: 4rem; line-height: 1; }
+.game-card h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.game-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; }
+</style>
+{% endblock %}
