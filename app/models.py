@@ -31,6 +31,7 @@ class User(UserMixin, db.Model):
     email         = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     created_at    = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    is_admin      = db.Column(db.Boolean, nullable=False, default=False, server_default="0")
 
     posts    = db.relationship("Post",    backref="author", lazy=True, cascade="all, delete-orphan")
     comments = db.relationship("Comment", backref="author", lazy=True, cascade="all, delete-orphan")

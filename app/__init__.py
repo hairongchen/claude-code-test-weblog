@@ -27,13 +27,22 @@ def create_app():
     from .auth import auth_bp
     from .blog import blog_bp
     from .games import games_bp
+    from .admin import admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(blog_bp)
     app.register_blueprint(games_bp)
+    app.register_blueprint(admin_bp)
 
     with app.app_context():
         # create_all() only creates missing tables — never drops or alters existing data
         db.create_all()
+
+        from .models import User
+        if not User.query.filter_by(is_admin=True).first():
+            admin = User(username="admin", email="admin@localhost", is_admin=True)
+            admin.set_password("admin")
+            db.session.add(admin)
+            db.session.commit()
 
     return app

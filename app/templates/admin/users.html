@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Admin – Users – DevLog{% endblock %}
+
+{% block content %}
+<h1>User Management</h1>
+
+<table style="width:100%;border-collapse:collapse;margin-top:1.5rem;">
+  <thead>
+    <tr style="text-align:left;border-bottom:2px solid var(--border);">
+      <th style="padding:0.5rem 0.75rem;">ID</th>
+      <th style="padding:0.5rem 0.75rem;">Username</th>
+      <th style="padding:0.5rem 0.75rem;">Email</th>
+      <th style="padding:0.5rem 0.75rem;">Role</th>
+      <th style="padding:0.5rem 0.75rem;">Joined</th>
+      <th style="padding:0.5rem 0.75rem;">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.5rem 0.75rem;">{{ user.id }}</td>
+      <td style="padding:0.5rem 0.75rem;">{{ user.username }}</td>
+      <td style="padding:0.5rem 0.75rem;">{{ user.email }}</td>
+      <td style="padding:0.5rem 0.75rem;">
+        {% if user.is_admin %}<span class="btn btn-primary" style="padding:0.15rem 0.5rem;font-size:0.75rem;cursor:default;">admin</span>{% else %}user{% endif %}
+      </td>
+      <td style="padding:0.5rem 0.75rem;">{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+      <td style="padding:0.5rem 0.75rem;">
+        <a href="{{ url_for('admin.reset_password', user_id=user.id) }}" class="btn btn-primary" style="padding:0.25rem 0.65rem;font-size:0.8rem;">Reset Password</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

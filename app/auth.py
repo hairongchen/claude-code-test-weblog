@@ -77,3 +77,32 @@ def logout():
     logout_user()
     flash("You have been logged out.", "success")
     return redirect(url_for("blog.index"))
+
+
+@auth_bp.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm = request.form.get("confirm_new_password", "")
+
+        errors = []
+        if not current_user.check_password(current_password):
+            errors.append("Current password is incorrect.")
+        if len(new_password) < 6:
+            errors.append("New password must be at least 6 characters.")
+        if new_password != confirm:
+            errors.append("New passwords do not match.")
+
+        if errors:
+            for e in errors:
+                flash(e, "error")
+            return render_template("auth/settings.html")
+
+        current_user.set_password(new_password)
+        db.session.commit()
+        flash("Password updated successfully.", "success")
+        return redirect(url_for("auth.settings"))
+
+    return render_template("auth/settings.html")
