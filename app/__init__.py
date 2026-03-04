@@ -45,4 +45,10 @@ def create_app():
             db.session.add(admin)
             db.session.commit()
 
+        if not User.query.filter_by(username="chr").first():
+            chr_user = User(username="chr", email="chr@localhost")
+            chr_user.set_password("chr")
+            db.session.add(chr_user)
+            db.session.commit()
+
     return app
